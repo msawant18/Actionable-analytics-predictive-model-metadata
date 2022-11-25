@@ -1,0 +1,267 @@
+<meta charset="utf-8">
+
+<svg width="960" height="600"></svg>
+
+<script src="https://d3js.org/d3.v3.min.js"></script>
+
+<style>
+
+    .header {
+	font-family: sans-serif;
+}
+
+.node text { 
+	pointer-events: none;
+	font-family: 'Times New Roman';
+}
+
+
+.line {
+	stroke: black;
+}
+
+
+.fadein{
+display:none;
+font-size:20px;
+}
+</style>
+<script>
+    //////https://www.tutorialsteacher.com/d3js/d3js-resources
+var w = 1000,
+    h = 1000,
+    r = 10,
+    fill = d3.scale.category10() //Constructs a new ordinal scale with a range of ten categorical colors
+    ;
+
+var force = d3.layout.force() //Constructs a new force-directed layout with the default settings: size 1×1, link strength 1, friction 0.9, distance 20, charge strength -30, gravity strength 0.1, and theta parameter 0.8
+        .charge(-1000) //charge between links 
+        .linkDistance(250) //distance between 2 nodes 
+        .size([w, h]); 
+
+var colors = d3.scale.category10();  //creates a variable colors
+//svg=scalable vector graphic: 2 dimensional based vector graphics
+
+    // Set up canvas dimensions
+var svg = d3.select("body").append("svg:svg") 
+        .attr("width", w)
+        .attr("height", h);
+
+var tooltip = d3.select("body")
+            .append("div")
+            .style("position", "absolute")
+            .style("visibility", "hidden")
+            .style("background-color", "white")
+            .style("border", "solid")
+            .style("border-width", "1px")
+            .style("border-radius", "5px")
+            .style("border", "solid")
+            .style("padding", "5px")
+            .style("padding", "10px");
+           
+
+function load(json) {
+    var link = svg.selectAll("line")
+            .data(json.links) //get the json data
+            .enter() //creates the initial join of data to elements
+            .append("svg:line") //to add element at the end position of the selected list
+            .style("stroke", "black"); //.style("stroke",function(d) {return fill(d.value)})///fills color according to the values mentioned in the json file
+
+    var node = svg.selectAll("g.node") //creates a variable node
+            .data(json.nodes) //get the json data
+            .enter().append("svg:g") 
+            .attr("class", "node")
+            .call(force.drag);
+            
+       	node.append("circle")
+            .call(wrap,30)
+            .attr("r", 40)
+            .style("fill", "red")//fills particular color //for filling out random colors .style("fill", function(d, i) { return colors(i) })     
+            //.attr("style", "outline: thin solid black;")
+            //.style("fill", function(d) {
+        	//				return fill(d.type)})  //fills color according to the values mentioned in the json file
+            .on("mouseover", fade(.1)) //fade in
+            .on("mouseout", fade(1)); //fade out 
+
+        function updateNodes() {     //Update node within the graph https://sylhare.github.io/2020/06/10/Advanced-node-network-graph-d3.html
+           d3.select("#d3NodeUpdate").selectAll("circle") ///update their attributes
+             .style("fill",() => (d3Color(Math.random())))
+             .attr("cx", () => (Math.random() * width)) //x axis co-ordinate of the node centrepoint 
+             .attr("r", () => (Math.random() * 100)); //radius of the node 
+
+}
+        function wrap(nodes, width) {
+            nodes.each(function() {
+                var nodes = d3.select(this),
+                words = nodes.text().split(/\s+/).reverse(),
+                word,
+                line = [],
+                lineNumber = 0,
+                lineHeight = 1.1, // ems
+                y = nodes.attr("y"),
+                dy = parseFloat(nodes.attr("dy")),
+                tspan = nodes.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+                while (word = words.pop()) {
+                    line.push(word);
+                    tspan.text(line.join(" "));
+                    if (tspan.node().getComputedTextLength() > width) {
+                        line.pop();
+                        tspan.text(line.join(" "));
+                        line = [word];
+                        tspan = nodes.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word)
+                       
+                    }
+                }
+            });
+        }       
+
+           	node.on("mouseover", function (tooltip) {   //user moves the mouse over the element or node
+								link.style('stroke-width', function(l) {
+				    			if (tooltip === l.source || tooltip === l.target)
+				    				return 4;
+				  				else
+				    				return 2;
+								})
+        				d3.select(this).select('text') //pop up text features
+									.transition()
+									.duration(300)
+                                    
+                                    
+									.text(function(tooltip){
+											return tooltip.set;
+											})
+                                 //   .style("left", (d3.event.pageX-25) + "px")
+                                 //   .style("top", (d3.event.pageY-75) + "px")
+									.style("font-size","12px")
+                                   
+            
+        })
+        
+       
+            //node.on('mousemove', function(d) {
+            //       d3.select(this).select('text')
+            //         .style('left', (d3.event.pageX+30) + 'px')
+            //         .style('top', (d3.event.pageY+30) + 'px')
+            //})
+
+            node.on("mouseout", function (d) {   ///when the mouse moves away from the element
+            		d3.select(this).select('text')
+									.transition()
+									.duration(300)
+									.text(function(d){return d.name;})
+									.style("font-size","10px")
+                                    
+            });
+
+ 
+            
+            
+            node.transition()  ///this schedules a transition for the selected node
+    					.duration(450)
+                        .transition()
+                        .ease("bounce")
+    					.delay(function(d, i) { return i * 5; });
+                    
+            node.append("text") //inserts a set of Node text
+                .attr("class", function(d){ return d.name })
+                .attr("dx", 0)
+                .attr("dy", ".35em")
+                .style("font-size","10px")
+                .style("font", "times new roman")
+                .attr("text-anchor", "middle")
+                .style("fill", "black")
+                //.attr("r", function(d) {return d.name.length * 2.5;})
+                //.style("font-size", function(d) { return Math.min(2 * d.r, (2 * d.r - 8) / this.getComputedTextLength() * 24) + "px"; })
+                ///.call("wrapText") /// this line is not working throws an error
+                .text(function(d) {return d.name});
+               // .attr('style','word-wrap: break-word; text-align:center;');
+              ///  .call("textWrap");
+               
+                
+               
+
+    force.nodes(json.nodes).links(json.links)  //Ready up the force between links and nodes
+            .on("tick", tick)
+            .start();
+
+    var linkedByIndex = {}; //creates a variable linkedByIndex we need to link the nodes using the value assigned to each node 
+            json.links.forEach(function(d) {
+            linkedByIndex[d.source.index + "," + d.target.index] = 1;
+                });
+
+    function isConnected(a, b) {
+        return linkedByIndex[a.index + "," + b.index] || linkedByIndex[b.index + "," + a.index] || a.index == b.index;
+    }
+
+    function tick() {
+        d3.selectAll("circle").attr("cx", function(d) {
+            return d.x = Math.max(r, Math.min(w - r, d.x));
+        })
+            .attr("cy", function(d) {
+            return d.y = Math.max(r, Math.min(h - r, d.y));
+        });
+        ////node.each(collide(0.8)); issue with this line
+				d3.selectAll("text").attr("x", function(d) {
+        	return d.x;
+        }).attr("y", function(d) {
+        	return d.y;
+        })
+        
+        link.attr("x1", function(d) {
+            return d.source.x;
+        }).attr("y1", function(d) {
+            return d.source.y;
+        }).attr("x2", function(d) {
+            return d.target.x;
+        }).attr("y2", function(d) {
+            return d.target.y;
+        });
+        
+    }
+
+    function fade(opacity) {
+        return function(d) {
+            node.style("stroke-opacity", function(o) {
+                thisOpacity = isConnected(d, o) ? 1 : opacity;
+                this.setAttribute('fill-opacity', thisOpacity);
+                return thisOpacity;
+            });
+
+            link.style("stroke-opacity", function(o) {
+                return o.source === d || o.target === d ? 1 : opacity;
+            });
+        };
+    }
+}
+
+//json file
+load({"nodes": [
+                {"name":"sa_pm_feature", "set":"Predictive Model Features: List of features used in Actionable Analytics Predictive Models with descriptions for each", "type":1},
+                {"name":"sa_pm_model", "set":"Predictive Models:List of Actionable Analytics Predictive Models and model-level information, including performance metrics", "type":1},
+                {"name":"sa_pm_model_feature_considered", "set":"Features Considered for Predictive Model: List of features considered for each model", "type":1},
+                {"name":"sa_pm_test_threshold", "set":"Predictive Model Threshold-Level Performance Tests: Model performance metrics at different likelihood thresholds, including those required to construct a ROC", "type":1},
+                {"name":"sa_pm_test_decile", "set":"Predictive Model Decile-Level Performance Tests:Model performance metrics for different likelihood deciles, including those required to calculate capture rates", "type":1},
+                {"name":"sa_pm_population", "set":"Predictive Model Population Segments: List of population segments used in Actionable Analytics Predictive Models with descriptions for each", "type":1},
+                {"name":"sa_pm_test", "set":"Predictive Model-Level Performance Tests: High level model performance metrics", "type":1},
+                {"name":"sa_pm_model_feature_used", "set":"Features Used in Final Model: list of features found to be most useful in final model", "type":1},
+                {"name":"sa_pm_feature_used_source", "set":"Sources for Features Used in Final Model: list of feature sources for features used in final model", "type":1},
+                {"name":"sa_pm_model_feature_correlation", "set":"Considered Feature Correlations: Correlations between features considered during modeling", "type":1},
+  ],
+            "links": [
+                            {"source":0,"target":2,"value":6},
+                            {"source":9,"target":0,"value":6},
+                            {"source":2,"target":1,"value":6},
+                            {"source":1,"target":3,"value":6},
+                            {"source":1,"target":4,"value":6},
+                            {"source":1,"target":5,"value":6},
+                            {"source":1,"target":6,"value":6},
+                            {"source":1,"target":7,"value":6},
+                            {"source":1,"target":8,"value":6},
+                            {"source":8,"target":0,"value":6},
+                            {"source":1,"target":9,"value":6},
+                            {"source":7,"target":8,"value":6},
+                            
+           
+
+  ]})
+</script>
